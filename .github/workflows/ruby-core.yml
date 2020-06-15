@@ -20,14 +20,16 @@ jobs:
         with:
           ruby-version: head
           bundler: none
-      - name: Checkout a buildable revision
+      - name: Save latest buildable revision to environment
         run: echo "::set-env name=REF::$(ruby -v | cut -d')' -f1 | cut -d' ' -f5)"
       - uses: actions/checkout@v2
         with:
           repository: ruby/ruby
           path: ruby/ruby
           fetch-depth: 0
-          ref: ${{ env.REF }}
+      - name: Checkout the latest buildable revision
+        run: git switch -c ${{ env.REF }}
+        working-directory: ruby/ruby
       - name: Install libraries
         run: |
           set -x
