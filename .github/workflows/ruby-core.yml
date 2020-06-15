@@ -6,6 +6,7 @@ on:
   push:
     branches:
       - master
+      - enforce_ruby_core_integration
 
 jobs:
   ruby_core:
@@ -14,19 +15,24 @@ jobs:
       matrix:
         target: [rubygems, bundler]
     steps:
+      - name: Set up latest ruby head
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: head
+          bundler: none
+      - name: Checkout a buildable revision
+        run: echo "::set-env name=REF::$(ruby -v | cut -d')' -f1 | cut -d' ' -f5)"
+      - uses: actions/checkout@v2
+        with:
+          repository: ruby/ruby
+          path: ruby/ruby
+          ref: ${{ env.REF }}
       - name: Install libraries
         run: |
           set -x
           sudo apt-get update -q || :
           sudo apt-get install --no-install-recommends -q -y build-essential libssl-dev libyaml-dev libreadline6-dev zlib1g-dev libncurses5-dev libffi-dev libgdbm-dev bison autoconf ruby
-      - name: Prepare the working directory
-        run: |
-          mkdir ruby
-          mkdir rubygems
-      - uses: actions/checkout@v2
-        with:
-          repository: ruby/ruby
-          path: ruby/ruby
+        working-directory: ruby/ruby
       - name: Build Ruby
         run: |
           autoconf
@@ -41,12 +47,10 @@ jobs:
           ruby tool/sync_default_gems.rb rubygems
           make test-all TESTS="rubygems -j2"
         working-directory: ruby/ruby
-        continue-on-error: true
         if: matrix.target == 'rubygems'
       - name: Test Bundler
         run: |
           ruby tool/sync_default_gems.rb bundler
           make test-bundler
         working-directory: ruby/ruby
-        continue-on-error: true
         if: matrix.target == 'bundler'
